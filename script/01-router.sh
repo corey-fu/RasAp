@@ -9,12 +9,14 @@
 # Version 0.5
 #	- create the shell script
 # Version 0.6
-#	- append 'apt upgrade' in apt section
-#	- append brcm section
-#	- append networking section	
+#	- add 'apt upgrade' in apt section
+#	- add brcm section
+#	- add networking section	
 #	- modify ipv4_forwarding section 
 #	- To resolve dnsmasq.service failed at first time,
 #	modify 'bind-interfaces' to 'bind-dynamic' in dnsmasq section
+# Version 0.7
+#	- delete the section for hostapd and add a new one
 
 
 # Variables:
@@ -126,25 +128,50 @@ EOF
 echo 'Write the custom cofig to hostapd...'
 mv /etc/hostapd/hostapd.conf /etc/hostapd/hostapd.orig
 cat > /etc/hostapd/hostapd.conf << EOF
-# Credits to https://github.com/billz/raspap-webgui
-driver=nl80211
-ctrl_interface=/var/run/hostapd
-ctrl_interface_group=0
-beacon_int=100
-auth_algs=1
-wpa_key_mgmt=WPA-PSK
-ssid=$SSID
-channel=7
-hw_mode=g
-wpa_passphrase=$Passphrase
+# Creadits to asavah@github.com
+# URL: https://github.com/raspberrypi/linux/issues/2619
+
+# Configure as wlan0
 interface=wlan0
+driver=nl80211
+
+# SSID & Password
+ssid=$SSID
+wpa_passphrase=$Passphrase
+
+country_code=TW
+
 wpa=2
-wpa_pairwise=CCMP
-country_code=
-## Rapberry Pi 3 specific to on board WLAN/WiFi
-ieee80211n=1 # 802.11n support (Raspberry Pi 3)
-wmm_enabled=1 # QoS support (Raspberry Pi 3)
-ht_capab=[HT40][SHORT-GI-20][DSSS_CCK-40] # (Raspberry Pi 3)
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+
+# Disable MAC filtering
+macaddr_acl=0
+
+logger_syslog=0
+logger_syslog_level=4
+logger_stdout=-1
+logger_stdout_level=0
+
+# Mode for 802.11 a/b/g/n/ac
+hw_mode=a
+wmm_enabled=1
+
+# N
+#ieee80211n=1
+#require_ht=1
+channel=7
+#ht_capab=[MAX-AMSDU-3839][HT40+][SHORT-GI-20][SHORT-GI-40][DSSS_CCK-40]
+
+# AC
+#ieee80211ac=1
+#require_vht=1
+#ieee80211d=0
+#ieee80211h=0
+#vht_capab=[MAX-AMSDU-3839][SHORT-GI-80]
+#vht_oper_chwidth=1
+#channel=36
+#vht_oper_centr_freq_seg0_idx=42
 EOF
 
 echo 'Enable ipv4 forwarding...'

@@ -17,11 +17,13 @@
 #	modify 'bind-interfaces' to 'bind-dynamic' in dnsmasq section
 # Version 0.7
 #	- delete the section for hostapd and add a new one
+#	- modify variables section
+#	- modify reboot section to let user consider whether to shutdown the rpi or not
 
 
 # Variables:
-SSID=
-Passphrase=
+read -p 'Please enter your SSID of this router: ' SSID
+read -s -p 'Please enter your Password of this router: ' Passphrase
 
 #echo 'Modifly the User PATH...'
 #cat >> /home/admin/.bashrc << EOF
@@ -209,5 +211,6 @@ systemctl enable hostapd
 #systemctl restart dnsmasq 
 #systemctl restart hostapd
 
-echo 'Reboot...'
+echo 'Reboot in 10 seconds...'
+sleep 10
 shutdown -r now

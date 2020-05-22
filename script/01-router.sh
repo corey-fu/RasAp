@@ -197,6 +197,8 @@ COMMIT
 # allow incoming traffic to the outgoing connections,
 # et al for clients from the private network
 -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+# allow ping
+-A INPUT -p icmp -j ACCEPT
 # prohibit everything else incoming
 -A INPUT -i eth0 -j DROP
 COMMIT

@@ -3,7 +3,7 @@
 # Author: CoreyFu
 
 # Purpose:
-# Auto configuring a custom wifi router on raspi3b+
+# Auto configuring a custom wifi router on raspi
 
 # Changelogs:
 # Version 0.5
@@ -19,7 +19,10 @@
 #	- delete the section for hostapd and add a new one
 #	- modify variables section
 #	- modify reboot section to let user consider whether to shutdown the rpi or not
+#	- modify hostapd section to debug and default location to read
+#	- use service for networking instead of dhcpcd
 
+echo 'Please run this script with bash !'
 
 # Variables:
 read -p 'Please enter your SSID of this router: ' SSID
@@ -36,10 +39,9 @@ read -s -p 'Please enter your Password of this router: ' Passphrase
 
 echo 'Install required packages...'
 apt update -y && apt upgrade -y && \
-       	apt install -y dhcpcd5 dnsmasq hostapd iw net-tools resolvconf wget
+       	apt install -y dnsmasq hostapd iw net-tools resolvconf wget
 
 echo 'Stop services...'
-systemctl stop dhcpcd
 systemctl stop dnsmasq
 systemctl unmask hostapd
 systemctl stop hostapd
@@ -58,10 +60,16 @@ iface lo inet loopback
 auto eth0
 allow-hotplug eth0
 iface eth0 inet dhcp
+
+allow-hotplug wlan0
+iface wlan0 inet static
+address 192.168.80.1
+netmask 255.255.255.0
+gateway 192.168.80.255
 EOF
 
 echo 'Write the custom cofig to dhcpcd...'
-mv /etc/dhcpcd.conf /etc/dhcpcd.orig
+[ -f /etc/dhcpcd.conf ] && mv /etc/dhcpcd.conf /etc/dhcpcd.orig
 cat > /etc/dhcpcd.conf << EOF
 # Credits to https://github.com/billz/raspap-webgui
 hostname 
@@ -141,7 +149,7 @@ driver=nl80211
 ssid=$SSID
 wpa_passphrase=$Passphrase
 
-country_code=TW
+#country_code=TW
 
 wpa=2
 wpa_key_mgmt=WPA-PSK
@@ -156,13 +164,13 @@ logger_stdout=-1
 logger_stdout_level=0
 
 # Mode for 802.11 a/b/g/n/ac
-hw_mode=a
+hw_mode=g
 wmm_enabled=1
 
 # N
 #ieee80211n=1
 #require_ht=1
-channel=7
+channel=1
 #ht_capab=[MAX-AMSDU-3839][HT40+][SHORT-GI-20][SHORT-GI-40][DSSS_CCK-40]
 
 # AC
@@ -176,6 +184,12 @@ channel=7
 #vht_oper_centr_freq_seg0_idx=42
 EOF
 
+echo 'Set Default location of config for hostapd...'
+sed -i 's/\#DAEMON\_CONF\=\"\"/DAEMON\_CONF\=\"\/etc\/hostapd\/hostapd\.conf"/g' /etc/default/hostapd 
+#cat >> /etc/default/hostapd << EOF
+#DAEMON_CONF="/etc/hostapd/hostapd.conf"
+#EOF
+
 echo 'Enable ipv4 forwarding...'
 sed -i 's/\#net\.ipv4\.ip\_forward\=1/net\.ipv4\.ip\_forward\=1/g' /etc/sysctl.conf
 
@@ -183,7 +197,8 @@ sed -i 's/\#net\.ipv4\.ip\_forward\=1/net\.ipv4\.ip\_forward\=1/g' /etc/sysctl.c
 #echo '1' > /proc/sys/net/ipv4/ip_forward
 
 echo 'Configure NAT...'
-mv /etc/iptables/rules.v4 /etc/iptables/rules.v4.orig
+[ -d '/etc/iptables' ] && mv /etc/iptables/rules.v4 /etc/iptables/rules.v4.orig
+[ ! -d '/etc/iptables' ] && mkdir -p /etc/iptables
 cat > /etc/iptables/rules.v4 << EOF
 #Credits to https://gridscale.io/en/community/tutorials/debian-router-gateway/
 *nat
@@ -204,8 +219,9 @@ COMMIT
 COMMIT
 EOF
 
+iptables-restore < /etc/iptables/rules.v4
+
 echo 'Enable services...'
-systemctl enable dhcpcd 
 systemctl enable dnsmasq 
 systemctl enable hostapd
 
